@@ -1,0 +1,57 @@
+import sqlite3
+from article import Article
+from magazine import Magazine
+
+class Author:
+    def __init__(self, name, id=None):
+        if not isinstance(name, str) or not (0 < len(name) <= 255):
+            raise ValueError("Author name must be a non-empty string up to 255 characters")
+        self.name = name
+        self.id = id
+
+    def save(self):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        if self.id is None:
+            cur.execute("INSERT INTO authors (name) VALUES (?)", (self.name,))
+            self.id = cur.lastrowid
+        else:
+            cur.execute("UPDATE authors SET name=? WHERE id=?", (self.name, self.id))
+        conn.commit()
+        conn.close()
+
+    def articles(self):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        rows = cur.execute("SELECT * FROM articles WHERE author_id=?", (self.id,)).fetchall()
+        conn.close()
+        return [Article(id=row[0], title=row[1], author_id=row[2], magazine_id=row[3]) for row in rows]
+
+    def magazines(self):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        rows = cur.execute("""
+            SELECT DISTINCT m.id, m.name, m.category
+            FROM articles a
+            INNER JOIN magazines m ON a.magazine_id = m.id
+            WHERE a.author_id = ?
+        """, (self.id,)).fetchall()
+        conn.close()
+        return [Magazine(id=row[0], name=row[1], category=row[2]) for row in rows]
+
+    def add_article(self, magazine, title):
+        article = Article(title=title, author_id=self.id, magazine_id=magazine.id)
+        article.save()
+        return article
+
+    def topic_areas(self):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        rows = cur.execute("""
+            SELECT DISTINCT m.category
+            FROM articles a
+            INNER JOIN magazines m ON a.magazine_id = m.id
+            WHERE a.author_id = ?
+        """, (self.id,)).fetchall()
+        conn.close()
+        return [row[0] for row in rows]
