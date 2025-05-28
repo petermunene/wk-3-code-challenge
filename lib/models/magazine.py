@@ -1,6 +1,5 @@
 import sqlite3
-from article import Article
-from author import Author
+
 
 class Magazine:
     magazine_categories = [
@@ -18,7 +17,8 @@ class Magazine:
         self.name = name
         self.category = category
         self.id = id
-
+    def __repr__(self):
+        return f"<Magazine id={self.id} name='{self.name}' category='{self.category}'>"
     def save(self):
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
@@ -31,6 +31,7 @@ class Magazine:
         conn.close()
 
     def articles(self):
+        from .article import Article
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
         rows = cur.execute("SELECT * FROM articles WHERE magazine_id=?", (self.id,)).fetchall()
@@ -38,6 +39,7 @@ class Magazine:
         return [Article(id=row[0], title=row[1], author_id=row[2], magazine_id=row[3]) for row in rows]
 
     def contributors(self):
+        from .author import Author
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
         rows = cur.execute("""
@@ -57,6 +59,7 @@ class Magazine:
         return [row[0] for row in rows]
 
     def contributing_authors(self):
+        from .author import Author
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
         rows = cur.execute("""
@@ -69,3 +72,49 @@ class Magazine:
         """, (self.id,)).fetchall()
         conn.close()
         return [Author(id=row[0], name=row[1]) for row in rows]
+    @classmethod
+    def find_by_id(cls, mag_id):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        row = cur.execute("SELECT * FROM magazines WHERE id=?", (mag_id,)).fetchone()
+        conn.close()
+        if row:
+            return cls(id=row[0], name=row[1], category=row[2])
+        return None
+
+    @classmethod
+    def find_by_name(cls, name):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        row = cur.execute("SELECT * FROM magazines WHERE name=?", (name,)).fetchone()
+        conn.close()
+        if row:
+            return cls(id=row[0], name=row[1], category=row[2])
+        return None
+    
+    @classmethod
+    def find_by_category(cls, category):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        rows = cur.execute("SELECT * FROM magazines WHERE category=?", (category,)).fetchall()
+        conn.close()
+        return [cls(id=row[0], name=row[1], category=row[2]) for row in rows]
+    
+    def  top_publisher(cls):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        row= cur.execute(
+            """
+            SELECT m.id,m.name, m.category, COUNT(*) AS count
+            FROM articles a 
+            INNER JOIN magazines m ON m.id= a.magazine_id
+            GROUP BY m.id
+            ORDER BY count DESC
+            LIMIT 1
+        """
+        ).fetchone()
+        conn.close()
+        if row:
+            return cls(name=row[1],category=row[2],id=row[0])
+        else :
+            return None
