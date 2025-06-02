@@ -144,7 +144,7 @@ class Magazine:
     @classmethod
     def article_counts(cls):
         conn = sqlite3.connect("project.db")
-        conn.row_factory = sqlite3.Row  # get dict-like rows
+        conn.row_factory = sqlite3.Row  
         cur = conn.cursor()
         rows = cur.execute("""
             SELECT m.id, m.name, m.category, COUNT(a.id) as article_count
@@ -153,5 +153,4 @@ class Magazine:
             GROUP BY m.id
         """).fetchall()
         conn.close()
-        # Return list of sqlite3.Row objects (dict-like)
         return rows
