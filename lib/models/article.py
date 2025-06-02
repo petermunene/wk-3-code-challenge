@@ -47,3 +47,12 @@ class Article:
         rows = cur.execute("SELECT * FROM articles WHERE magazine_id=?", (magazine_id,)).fetchall()
         conn.close()
         return [cls(id=row[0], title=row[1], author_id=row[2], magazine_id=row[3]) for row in rows]
+    @classmethod
+    def find_by_title(cls, title):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        row = cur.execute("SELECT * FROM articles WHERE title=?", (title,)).fetchone()
+        conn.close()
+        if row:
+            return cls(id=row[0], title=row[1], author_id=row[2], magazine_id=row[3])
+        return None

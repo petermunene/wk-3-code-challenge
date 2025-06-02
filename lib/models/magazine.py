@@ -12,13 +12,15 @@ class Magazine:
     def __init__(self, name, category, id=None):
         if not isinstance(name, str) or not (0 < len(name) <= 255):
             raise ValueError("Magazine name must be a non-empty string up to 255 characters")
-        if category not in Magazine.magazine_categories:
-            raise ValueError("Invalid category.")
+        # if category not in Magazine.magazine_categories:
+        #     raise ValueError("Invalid category.")
         self.name = name
         self.category = category
         self.id = id
+
     def __repr__(self):
         return f"<Magazine id={self.id} name='{self.name}' category='{self.category}'>"
+
     def save(self):
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
@@ -72,6 +74,7 @@ class Magazine:
         """, (self.id,)).fetchall()
         conn.close()
         return [Author(id=row[0], name=row[1]) for row in rows]
+
     @classmethod
     def find_by_id(cls, mag_id):
         conn = sqlite3.connect("project.db")
@@ -91,30 +94,64 @@ class Magazine:
         if row:
             return cls(id=row[0], name=row[1], category=row[2])
         return None
-    
+
     @classmethod
     def find_by_category(cls, category):
+        # if category not in cls.magazine_categories:
+        #     raise ValueError("Invalid category.")
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
         rows = cur.execute("SELECT * FROM magazines WHERE category=?", (category,)).fetchall()
         conn.close()
         return [cls(id=row[0], name=row[1], category=row[2]) for row in rows]
-    
-    def  top_publisher(cls):
+
+    @classmethod
+    def top_publisher(cls):
         conn = sqlite3.connect("project.db")
         cur = conn.cursor()
-        row= cur.execute(
+        row = cur.execute(
             """
-            SELECT m.id,m.name, m.category, COUNT(*) AS count
-            FROM articles a 
-            INNER JOIN magazines m ON m.id= a.magazine_id
+            SELECT m.id, m.name, m.category, COUNT(*) AS count
+            FROM articles a
+            INNER JOIN magazines m ON m.id = a.magazine_id
             GROUP BY m.id
             ORDER BY count DESC
             LIMIT 1
-        """
+            """
         ).fetchone()
         conn.close()
         if row:
-            return cls(name=row[1],category=row[2],id=row[0])
-        else :
+            return cls(id=row[0], name=row[1], category=row[2])
+        else:
             return None
+
+    @classmethod
+    def with_multiple_authors(cls):
+        """
+        Return magazines with articles written by more than one distinct author.
+        """
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        rows = cur.execute("""
+            SELECT m.id, m.name, m.category
+            FROM magazines m
+            JOIN articles a ON m.id = a.magazine_id
+            GROUP BY m.id
+            HAVING COUNT(DISTINCT a.author_id) > 1
+        """).fetchall()
+        conn.close()
+        return [cls(id=row[0], name=row[1], category=row[2]) for row in rows]
+    @classmethod
+    def article_counts(cls):
+        conn = sqlite3.connect("project.db")
+        conn.row_factory = sqlite3.Row  # get dict-like rows
+        cur = conn.cursor()
+        rows = cur.execute("""
+            SELECT m.id, m.name, m.category, COUNT(a.id) as article_count
+            FROM magazines m
+            LEFT JOIN articles a ON m.id = a.magazine_id
+            GROUP BY m.id
+        """).fetchall()
+        conn.close()
+        # Return list of sqlite3.Row objects (dict-like)
+        return rows

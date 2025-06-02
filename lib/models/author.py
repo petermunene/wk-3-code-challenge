@@ -79,3 +79,20 @@ class Author:
         """, (self.id,)).fetchall()
         conn.close()
         return [row[0] for row in rows]
+    @classmethod
+    def top_author(cls):
+        conn = sqlite3.connect("project.db")
+        cur = conn.cursor()
+        row = cur.execute("""
+            SELECT a.id, a.name, COUNT(ar.id) AS article_count
+            FROM authors a
+            JOIN articles ar ON a.id = ar.author_id
+            GROUP BY a.id
+            ORDER BY article_count DESC
+            LIMIT 1
+        """).fetchone()
+        conn.close()
+        if row:
+            return cls(id=row[0], name=row[1])
+        return None
+    
